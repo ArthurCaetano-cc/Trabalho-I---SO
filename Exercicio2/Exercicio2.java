@@ -1,8 +1,7 @@
 package Exercicio2;
 import java.util.ArrayList;
-import java.util.Random;
 
-class ArrayListSafe<V> {
+public class ArrayListSafe<V> {
     private final ArrayList<V> arr;
 
     public ArrayListSafe() {
@@ -43,50 +42,5 @@ class ArrayListSafe<V> {
 
     public synchronized boolean contains(V value) {
         return arr.contains(value);
-    }
-}
-
-class ThreadTests extends Thread {
-    private int rank;
-    private ArrayListSafe<Integer> arr;
-
-    public ThreadTests(int rank, ArrayListSafe<Integer> arr){
-        this.rank = rank;
-        this.arr = arr;
-    }
-
-    @Override 
-    public void run(){
-        Random random = new Random();
-        for(int i = 0; i < 5; i++){
-            int randomNumber = random.nextInt(100); // valores entre 0 e 99
-            arr.insertInto(randomNumber);
-            System.out.printf("Thread %d inseriu o valor %d no array\n", this.rank, randomNumber);
-        }
-    }
-}
-
-public class Exercicio2 {
-    public static void main(String[] args) throws InterruptedException {
-        ArrayListSafe<Integer> arr = new ArrayListSafe<>();
-        ThreadTests[] threads = new ThreadTests[5];
-
-        for(int i = 0; i < 5; i++){
-            threads[i] = new ThreadTests(i, arr);
-            threads[i].start();
-        }
-
-        for (int i = 0; i < 5; i++) {
-            threads[i].join();
-        }
-        
-        int size = arr.getSize();
-
-        System.out.println("Tamanho final do array: " + size);
-        System.out.println("Conteúdo final do Array:");
-        for(int i = 0; i < size; i++){
-            System.out.printf("%d ", arr.get(i));
-        }
-        System.out.println();
     }
 }
