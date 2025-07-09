@@ -1,166 +1,123 @@
 package Exercicio3;
+
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
-import java.util.Random;
+import java.util.Locale;
+import Exercicio2.ArrayListSafe;
 
-class Pair<K, V> {
-    public final K key;
-    public final V value;
+class FourValues<F, S, T, Fth> {
+    public final F first;
+    public final S second;
+    public final T third;
+    public final Fth fourth;
 
-    public Pair(K key, V value) {
-        this.key = key;
-        this.value = value;
+    public FourValues(F first, S second, T third, Fth fourth) {
+        this.first = first;
+        this.second = second;
+        this.third = third;
+        this.fourth = fourth;
     }
 
-    public K getKey() { return key; }
-    public V getValue() { return value; }
-}
-
-class ArrayListSafe<V> {
-    private final ArrayList<V> arr;
-
-    public ArrayListSafe() {
-        this.arr = new ArrayList<>();
-    }
-
-    public synchronized void insertInto(V value) {
-        arr.add(value);
-    }
-
-    public synchronized int getSize() {
-        return arr.size();
-    }
-
-    public synchronized V get(int index) {
-        return arr.get(index);
-    }
-
-    public synchronized int find(V value) {
-        for (int i = 0; i < this.arr.size(); i++) {
-            if (this.arr.get(i).equals(value)) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    public synchronized void remove(int index) {
-        arr.remove(index);
-    }
-
-    public synchronized V pop(int index) {
-        V value = arr.get(index);
-        arr.remove(index);
-        return value;
-    }
-
-    public synchronized boolean contains(V value) {
-        return arr.contains(value);
-    }
+    public F getFirst() { return first; }
+    public S getSecond() { return second; }
+    public T getThird() { return third; }
+    public Fth getFourth() { return fourth; }
 }
 
 class Helper {
-    private ArrayListSafe<Integer> arrSafe;
-    private ArrayList<Integer> arrOriginal;
-    private int size;
-    private String sizeStr;
-    Random random = new Random();
+    private final ArrayListSafe<Integer> arrSafe = new ArrayListSafe<>();
+    private final ArrayList<Integer> arrOriginal = new ArrayList<>();
+    private final int size;
+    private final String sizeStr;
+    private final DecimalFormat formato;
 
     public Helper(int size, String sizeStr) {
         this.size = size;
         this.sizeStr = sizeStr;
-        this.arrSafe = new ArrayListSafe<>();
-        this.arrOriginal = new ArrayList<>();
+        DecimalFormatSymbols simbolos = new DecimalFormatSymbols(new Locale("pt", "BR"));
+        simbolos.setDecimalSeparator(',');
+        simbolos.setGroupingSeparator('.');
+        this.formato = new DecimalFormat("#,##0.000", simbolos);
     }
 
-    public Pair<Double, Double> insertions() {
+    private FourValues<Double, Double, Double, Double> medirTempo(Runnable safeOp, Runnable originalOp) {
         long begin = System.nanoTime();
-
-        for (int i = 0; i < size; i++) {
-            arrSafe.insertInto(i);
-        }
-
+        safeOp.run();
         long safeEnd = System.nanoTime();
-
-        for (int i = 0; i < size; i++) {
-            arrOriginal.add(i);
-        }
-
+        originalOp.run();
         long originalEnd = System.nanoTime();
 
         double safeTimeMs = (safeEnd - begin) / 1_000_000.0;
         double originalTimeMs = (originalEnd - safeEnd) / 1_000_000.0;
 
-        return new Pair<>(safeTimeMs, originalTimeMs);
+        return new FourValues<>(
+            safeTimeMs,
+            originalTimeMs,
+            operationsPerSecond(safeTimeMs),
+            operationsPerSecond(originalTimeMs)
+        );
     }
 
-    public Pair<Double, Double> searchs() {
-        long begin = System.nanoTime();
-        arrSafe.find(this.size + 15);
-        long safeEnd = System.nanoTime();
+    private double operationsPerSecond(double timeMs) {
+        return (1000.0 * size) / timeMs;
+    }
 
-        for (int i = 0; i < this.size; i++) {
-            if ((this.size + 15) == arrOriginal.get(i)) {
-                break;
+    public FourValues<Double, Double, Double, Double> insertions() {
+        return medirTempo(() -> {
+            for (int i = 0; i < size; i++) arrSafe.insertInto(i);
+        }, () -> {
+            for (int i = 0; i < size; i++) arrOriginal.add(i);
+        });
+    }
+
+    public FourValues<Double, Double, Double, Double> searchs() {
+        return medirTempo(() -> arrSafe.find(size + 15), () -> {
+            for (int i = 0; i < size; i++) {
+                if ((size + 15) == arrOriginal.get(i)) break;
             }
-        }
-
-        long originalEnd = System.nanoTime();
-
-        double safeTimeMs = (safeEnd - begin) / 1_000_000.0;
-        double originalTimeMs = (originalEnd - safeEnd) / 1_000_000.0;
-
-        return new Pair<>(safeTimeMs, originalTimeMs);
+        });
     }
 
-    public Pair<Double, Double> remotions() {
-        long begin = System.nanoTime();
+    public FourValues<Double, Double, Double, Double> removals() {
+        return medirTempo(() -> {
+            for (int i = size - 1; i >= 0; i--) arrSafe.remove(i);
+        }, () -> {
+            for (int i = size - 1; i >= 0; i--) arrOriginal.remove(i);
+        });
+    }
 
-        for (int i = size - 1; i >= 0; i--) {
-            arrSafe.remove(i);
-        }
-
-        long safeEnd = System.nanoTime();
-
-        for (int i = size - 1; i >= 0; i--) {
-            arrOriginal.remove(i);
-        }
-
-        long originalEnd = System.nanoTime();
-
-        double safeTimeMs = (safeEnd - begin) / 1_000_000.0;
-        double originalTimeMs = (originalEnd - safeEnd) / 1_000_000.0;
-
-        return new Pair<>(safeTimeMs, originalTimeMs);
+    private String format(double value) {
+        return formato.format(value);
     }
 
     public void run() {
-        Pair<Double, Double> insertions = insertions();
-        Pair<Double, Double> searchs = searchs();
-        Pair<Double, Double> remotions = remotions();
+        var insertions = insertions();
+        var searchs = searchs();
+        var removals = removals();
 
-        System.out.printf("\nTamanho das listas: %d (%s)\n", this.size, this.sizeStr);
+        System.out.printf("\n-----Tamanho das listas: %,d (%s)-----\n", size, sizeStr);
         System.out.printf("%-10s | %-22s | %-22s\n", "Operação", "ArrayList (ms)", "ArrayListSafe (ms)");
-        System.out.printf("%-10s | %-22.3f | %-22.3f\n", "Inserção", insertions.getValue(), insertions.getKey());
-        System.out.printf("%-10s | %-22.3f | %-22.3f\n", "Busca", searchs.getValue(), searchs.getKey());
-        System.out.printf("%-10s | %-22.3f | %-22.3f\n", "Remoção", remotions.getValue(), remotions.getKey());
+        printLine("Inserção", insertions.getSecond(), insertions.getFirst());
+        printLine("Busca", searchs.getSecond(), searchs.getFirst());
+        printLine("Remoção", removals.getSecond(), removals.getFirst());
+
+        System.out.println("\nOperações por segundo:\n");
+        System.out.printf("%-10s | %-22s | %-22s\n", "Operação", "ArrayList", "ArrayListSafe");
+        printLine("Inserção", insertions.getFourth(), insertions.getThird());
+        printLine("Busca", searchs.getFourth(), searchs.getThird());
+        printLine("Remoção", removals.getFourth(), removals.getThird());
+    }
+
+    private void printLine(String label, double original, double safe) {
+        System.out.printf("%-10s | %-22s | %-22s\n", label, format(original), format(safe));
     }
 }
 
 public class MonoThread {
     public static void main(String[] args) {
-        Helper table1 = new Helper(1000, "Mil");
-        Helper table2 = new Helper(100000, "Cem Mil");
-        Helper table3 = new Helper(10000000, "Dez Milhões");
-
-        table1.run();
-        table2.run();
-        table3.run();
-
-        System.out.println("\n--------------Legenda:-----------------");
-        System.out.println("Inserção - Preenchimento da estrutura com N elementos");
-        System.out.println("Busca - Tentativa de buscar um elemento inexistente");
-        System.out.println("Remoção - Remoção de todos os elementos");
-
-        System.out.println("\nRelatório de Tempo:");
+        new Helper(1000, "Mil").run();
+        new Helper(100_000, "Cem Mil").run();
+        new Helper(10_000_000, "Dez Milhões").run();
     }
 }
